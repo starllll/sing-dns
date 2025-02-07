@@ -440,16 +440,24 @@ func (c *Client) LookupCache(ctx context.Context, domain string, strategy Domain
 			return response, true
 		}
 	} else {
-		response4, _ := c.questionCache(dns.Question{
+		// start 域名缓存必须同时缓存了v4和v6，若只有一个缓存，则判定未缓存 20250207
+		response4, err := c.questionCache(dns.Question{
 			Name:   dnsName,
 			Qtype:  dns.TypeA,
 			Qclass: dns.ClassINET,
 		}, nil)
-		response6, _ := c.questionCache(dns.Question{
+		if err == ErrNotCached {
+			return nil, false
+		}
+		response6, err := c.questionCache(dns.Question{
 			Name:   dnsName,
 			Qtype:  dns.TypeAAAA,
 			Qclass: dns.ClassINET,
 		}, nil)
+		if err == ErrNotCached {
+			return nil, false
+		}
+		// end 域名缓存必须同时缓存了v4和v6，若只有一个缓存，则判定未缓存 20250207
 		if len(response4) > 0 || len(response6) > 0 {
 			return sortAddresses(response4, response6, strategy), true
 		}
